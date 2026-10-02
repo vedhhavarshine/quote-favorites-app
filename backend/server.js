@@ -5,20 +5,27 @@ const path = require("path");
 const fs = require("fs");
 
 const app = express();
-const PORT = 3000;
+
+// Use hosting platform's port when deployed.
+// Use 3000 when running locally.
+const PORT = process.env.PORT || 3000;
+
+// ==============================
+// MIDDLEWARE
+// ==============================
 
 app.use(cors());
 app.use(express.json());
 
 // ==============================
-// DATABASE
+// DATABASE SETUP
 // ==============================
 
 const dbPath = path.join(__dirname, "quotes.db");
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        console.error("Database error:", err.message);
+        console.error("Database connection error:", err.message);
     } else {
         console.log("Connected to SQLite database.");
     }
@@ -34,7 +41,7 @@ db.run(`
     )
 `, (err) => {
     if (err) {
-        console.error("Table error:", err.message);
+        console.error("Table creation error:", err.message);
     } else {
         console.log("Favorites table ready.");
     }
@@ -72,7 +79,9 @@ try {
 // ==============================
 
 app.get("/api/quote", async (req, res) => {
+
     try {
+
         const response = await fetch(
             "https://dummyjson.com/quotes/random"
         );
@@ -91,11 +100,13 @@ app.get("/api/quote", async (req, res) => {
         });
 
     } catch (error) {
+
         console.log(
             "API unavailable. Using fallback dataset."
         );
 
         if (fallbackQuotes.length === 0) {
+
             return res.status(500).json({
                 error: "No quote source available."
             });
@@ -105,7 +116,8 @@ app.get("/api/quote", async (req, res) => {
             Math.random() * fallbackQuotes.length
         );
 
-        const fallbackQuote = fallbackQuotes[randomIndex];
+        const fallbackQuote =
+            fallbackQuotes[randomIndex];
 
         res.json({
             quote: fallbackQuote.text,
@@ -121,11 +133,14 @@ app.get("/api/quote", async (req, res) => {
 // ==============================
 
 app.get("/api/favorites", (req, res) => {
+
     db.all(
         `SELECT * FROM favorites ORDER BY created_at DESC`,
         [],
         (err, rows) => {
+
             if (err) {
+
                 return res.status(500).json({
                     error: "Could not retrieve favorites."
                 });
@@ -141,9 +156,11 @@ app.get("/api/favorites", (req, res) => {
 // ==============================
 
 app.post("/api/favorites", (req, res) => {
+
     const { quote, author, topic } = req.body;
 
     if (!quote || !author) {
+
         return res.status(400).json({
             error: "Quote and author are required."
         });
@@ -156,12 +173,14 @@ app.post("/api/favorites", (req, res) => {
         (err, row) => {
 
             if (err) {
+
                 return res.status(500).json({
                     error: "Database error."
                 });
             }
 
             if (row) {
+
                 return res.status(409).json({
                     error: "Quote is already in favorites."
                 });
@@ -171,10 +190,15 @@ app.post("/api/favorites", (req, res) => {
                 `INSERT INTO favorites
                  (quote, author, topic)
                  VALUES (?, ?, ?)`,
-                [quote, author, topic || "Random"],
+                [
+                    quote,
+                    author,
+                    topic || "Random"
+                ],
                 function (err) {
 
                     if (err) {
+
                         return res.status(500).json({
                             error: "Could not save favorite."
                         });
@@ -195,6 +219,7 @@ app.post("/api/favorites", (req, res) => {
 // ==============================
 
 app.delete("/api/favorites/:id", (req, res) => {
+
     const id = req.params.id;
 
     db.run(
@@ -203,12 +228,14 @@ app.delete("/api/favorites/:id", (req, res) => {
         function (err) {
 
             if (err) {
+
                 return res.status(500).json({
                     error: "Could not delete favorite."
                 });
             }
 
             if (this.changes === 0) {
+
                 return res.status(404).json({
                     error: "Favorite not found."
                 });
@@ -222,7 +249,7 @@ app.delete("/api/favorites/:id", (req, res) => {
 });
 
 // ==============================
-// FRONTEND
+// SERVE FRONTEND
 // ==============================
 
 app.use(
@@ -236,6 +263,7 @@ app.use(
 // ==============================
 
 app.listen(PORT, () => {
+
     console.log(
         `Server running at http://localhost:${PORT}`
     );
